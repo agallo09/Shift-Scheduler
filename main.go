@@ -8,8 +8,8 @@ import (
 
 // roles
 var users = map[string]string{
-	"student": "student",
-	"admin":   "admin",
+	"student1": "student",
+	"admin1":   "admin",
 }
 
 func main() {
@@ -31,9 +31,7 @@ func main() {
 			Value: "student1",
 			Path:  "/",
 		})
-		err := tmpl1.Execute(w, nil)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		
 		}
 	})
 	//admin button
