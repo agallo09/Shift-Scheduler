@@ -3,29 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Weekly Schedule</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 32px 16px;
+            background: #f5f7fb;
+            color: #1f2937;
+            font-family: Arial, sans-serif;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .subtitle {
+            color: #64748b;
+        }
+
+        .schedule-container {
+            overflow-x: auto;
+            margin-top: 24px;
+            background: #fff;
+            border: 1px solid #dbe2ea;
+            border-radius: 10px;
+        }
+
+        table {
+            width: 100%;
+            min-width: 700px;
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border-right: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            height: 48px;
+            background: #f8fafc;
+            font-size: 14px;
+        }
+
+        th:first-child {
+            width: 100px;
+        }
+
+        .time {
+            padding: 8px;
+            color: #64748b;
+            font-size: 13px;
+            text-align: right;
+            vertical-align: top;
+        }
+
+        .slot {
+            height: 60px;
+            background: repeating-linear-gradient(
+                to bottom,
+                #fff 0,
+                #fff 9px,
+                #e8edf4 9px,
+                #e8edf4 10px
+            );
+        }
+
+        .slot:hover {
+            background-color: #f0f7ff;
+        }
+
+        .totals {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .total-card {
+            min-width: 160px;
+            padding: 16px;
+            background: #fff;
+            border: 1px solid #dbe2ea;
+            border-radius: 8px;
+        }
+
+        .total-card span {
+            display: block;
+            margin-bottom: 6px;
+            color: #64748b;
+            font-size: 13px;
+        }
+    </style>
 </head>
 <body>
-    <table>
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>Monday</th>
-                <th>Tuesday</th>
-                <th>Wednesday</th>
-                <th>Thursday</th>
-                <th>Friday</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for time_slot in schedule %}
-            <tr>
-                <td>{{ time_slot.time }}</td>
-                {% for day in time_slot.days %}
-                <td>{{ day }}</td>
-                {% endfor %}
-            </tr>
-            {% endfor %}
-        </tbody>
+    <main>
+        <h1>Weekly Schedule</h1>
+        <p class="subtitle">Choose your available shifts from Monday through Friday.</p>
+
+        <div class="schedule-container">
+            <table aria-label="Weekly schedule from 8 AM to 6 PM">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Monday</th>
+                        <th>Tuesday</th>
+                        <th>Wednesday</th>
+                        <th>Thursday</th>
+                        <th>Friday</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="time">8:00 AM</td>
+                        <td class="slot" data-day="Monday" data-start="08:00"></td>
+                        <td class="slot" data-day="Tuesday" data-start="08:00"></td>
+                        <td class="slot" data-day="Wednesday" data-start="08:00"></td>
+                        <td class="slot" data-day="Thursday" data-start="08:00"></td>
+                        <td class="slot" data-day="Friday" data-start="08:00"></td>
+                    </tr>
+                    <tr>
+                        <td class="time">9:00 AM</td>
+                        <td class="slot" data-day="Monday" data-start="09:00"></td>
+                        <td class="slot" data-day="Tuesday" data-start="09:00"></td>
+                        <td class="slot" data-day="Wednesday" data-start="09:00"></td>
+                        <td class="slot" data-day="Thursday" data-start="09:00"></td>
+                        <td class="slot" data-day="Friday" data-start="09:00"></td>
+                    </tr>
+                    <tr>
+                        <td class="time">10:00 AM</td>
+                        <td class="slot" data-day="Monday" data-start="10:00"></td>
+                        <td class="slot" data-day="Tuesday" data-start="10:00"></td>
+                        <td class="slot" data-day="Wednesday" data-start="10:00"></td>
+                        <td class="slot" data-day="Thursday" data-start="10:00"></td>
+                        <td class="slot" data-day="Friday" data-start="10:00"></td>
+                    </tr>
+                    <tr>
+                        <td class="time">11:00 AM</td>
+                        <td class="slot" data-day="Monday" data-start="11:00"></td>
+                        <td class="slot" data-day="Tuesday" data-start="11:00"></td>
+                        <td class="slot" data-day="Wednesday" data-start="11:00"></td>
+                        <td class="slot" data-day="Thursday" data-start="11:00"></td>
+                        <td class="slot" data-day="Friday" data-start="11:00"></td>
+                    </tr>
+                    <tr>
+                        <td class="time">12:00 PM</td>
+                        <td class="slot" data-day="Monday" data-start="12:00"></td>
+                        <td class="slot" data-day="Tuesday" data-start="12:00"></td>
+                        <td class="slot" data-day="Wednesday" data-start="12:00"></td>
+                        <td class="slot" data-day="Thursday" data-start="12:00"></td>
+                        <td class="slot" data-day="Friday" data-start="12:00"></td>
+                    </tr>
+                    <tr>
+                        <td class="time">1:00 PM</td>
+                        <td class="slot" data-day="Monday" data-start="13:00"></td>
+                        <td class="slot" data-day="Tuesday" data-start="13:00"></td>
+                        <td class="slot" data-day="Wednesday" data-start="13:00"></td>
+                        <td class="slot" data-day="Thursday" data-start="13:00"></td>
+                        <td class="slot" data-day="Friday" data-start="13:00"></td>
+                    </tr>
+                    <tr>
+                        <td class="time">2:00 PM</td>
+                        <td class="slot" data-day="Monday" data-start="14:00"></td>
+                        <td class="slot" data-day="Tuesday" data-start="14:00"></td>
+                        <td class="slot" data-day="Wednesday" data-start="14:00"></td>
+                        <td class="slot" data-day="Thursday" data-start="14:00"></td>
+                        <td class="slot" data-day="Friday" data-start="14:00"></td>
+                    </tr>
+                    <tr>
+                        <td class="time">3:00 PM</td>
+                        <td class="slot" data-day="Monday" data-start="15:00"></td>
+                        <td class="slot" data-day="Tuesday" data-start="15:00"></td>
+                        <td class="slot" data-day="Wednesday" data-start="15:00"></td>
+                        <td class="slot" data-day="Thursday" data-start="15:00"></td>
+                        <td class="slot" data-day="Friday" data-start="15:00"></td>
+                    </tr>
+                    <tr>
+                        <td class="time">4:00 PM</td>
+                        <td class="slot" data-day="Monday" data-start="16:00"></td>
+                        <td class="slot" data-day="Tuesday" data-start="16:00"></td>
+                        <td class="slot" data-day="Wednesday" data-start="16:00"></td>
+                        <td class="slot" data-day="Thursday" data-start="16:00"></td>
+                        <td class="slot" data-day="Friday" data-start="16:00"></td>
+                    </tr>
+                    <tr>
+                        <td class="time">5:00 PM</td>
+                        <td class="slot" data-day="Monday" data-start="17:00"></td>
+                        <td class="slot" data-day="Tuesday" data-start="17:00"></td>
+                        <td class="slot" data-day="Wednesday" data-start="17:00"></td>
+                        <td class="slot" data-day="Thursday" data-start="17:00"></td>
+                        <td class="slot" data-day="Friday" data-start="17:00"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <section class="totals" aria-label="Schedule totals">
+            <div class="total-card">
+                <span>Weekly total</span>
+                <strong>0 hours</strong>
+            </div>
+        </section>
+    </main>
 </body>
 </html>

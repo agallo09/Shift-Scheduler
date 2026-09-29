@@ -31,7 +31,9 @@ func main() {
 			Value: "student1",
 			Path:  "/",
 		})
-		
+		err := tmpl1.Execute(w, nil)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
 	//admin button
