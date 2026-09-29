@@ -257,6 +257,52 @@
         #status[data-kind="error"] {
             color: #b91c1c;
         }
+
+        .review-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+            padding: 14px 16px;
+            border: 1px solid #dbe2ea;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .review-status-badge {
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            color: #334155;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .review-status-badge.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .review-status-badge.approved {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .review-status-badge.denied {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .denial-reason {
+            flex-basis: 100%;
+            margin: 0;
+            color: #991b1b;
+        }
+
+        .saved-slots {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -265,7 +311,17 @@
         <p class="subtitle">Choose your available shifts from Monday through Friday.</p>
         <p class="subtitle">Click and drag to select or clear 10-minute periods. Each continuous availability block must be at least 3 hours, with no more than 9 hours per day.</p>
 
-        <form id="schedule-form">
+        <section class="review-status" aria-live="polite">
+            <strong>Schedule status:</strong>
+            <span id="review-status-badge" class="review-status-badge">{{.ReviewStatus}}</span>
+            <p id="denial-reason" class="denial-reason" {{if ne .ReviewStatus "denied"}}hidden{{end}}>{{.DenialReason}}</p>
+            <span id="resubmit-hint" {{if ne .ReviewStatus "denied"}}hidden{{end}}>Edit your availability and submit it again for review.</span>
+        </section>
+
+        <form id="schedule-form" data-review-status="{{.ReviewStatus}}" data-has-submission="{{.HasSubmission}}">
+        <div class="saved-slots" aria-hidden="true">
+            {{range .SelectedSlots}}<span class="saved-slot" data-day="{{.Day}}" data-minute="{{.Minute}}"></span>{{end}}
+        </div>
         <fieldset class="employment-type">
             <legend>Which type of work are you seeking?</legend>
             <label>
@@ -309,9 +365,43 @@
             const form = document.getElementById("schedule-form");
             const submitButton = document.getElementById("submit-button");
             const status = document.getElementById("status");
+            const reviewBadge = document.getElementById("review-status-badge");
+            const denialReason = document.getElementById("denial-reason");
+            const resubmitHint = document.getElementById("resubmit-hint");
+            const employmentTypeInputs = form.querySelectorAll('input[name="employmentType"]');
             let dragging = false;
             let dragValue = false;
-            let submitted = false;
+            let reviewState = form.dataset.reviewStatus;
+            let locked = reviewState === "pending" || reviewState === "approved";
+
+            for (const slot of form.querySelectorAll(".saved-slot")) {
+                selected.add(slotKey(slot.dataset.day, Number(slot.dataset.minute)));
+            }
+            for (const input of employmentTypeInputs) {
+                input.checked = input.value === "{{.EmploymentType}}";
+            }
+
+            function updateReviewState(nextState, reason = "") {
+                const labels = {
+                    "not-submitted": "Not submitted",
+                    pending: "Pending approval",
+                    approved: "Approved",
+                    denied: "Denied"
+                };
+                reviewState = labels[nextState] ? nextState : "not-submitted";
+                locked = reviewState === "pending" || reviewState === "approved";
+                reviewBadge.textContent = labels[reviewState];
+                reviewBadge.className = `review-status-badge ${reviewState}`;
+                denialReason.textContent = reason;
+                denialReason.hidden = reviewState !== "denied";
+                resubmitHint.hidden = reviewState !== "denied";
+                tableBody.querySelectorAll(".slot-button").forEach((cell) => { cell.disabled = locked; });
+                employmentTypeInputs.forEach((input) => { input.disabled = locked; });
+                submitButton.disabled = locked;
+                submitButton.textContent = reviewState === "pending" || reviewState === "approved"
+                    ? "Submitted"
+                    : reviewState === "denied" ? "Resubmit availability" : "Submit availability";
+            }
 
             function formatTime(minute) {
                 const hour = Math.floor(minute / 60);
@@ -381,17 +471,18 @@
                     button.className = "slot-button";
                     button.dataset.day = day;
                     button.dataset.minute = String(minute);
-                    button.setAttribute("aria-pressed", "false");
+                    const isSelected = selected.has(slotKey(day, minute));
+                    button.setAttribute("aria-pressed", String(isSelected));
                     button.setAttribute("aria-label", `${day}, ${formatTime(minute)} to ${formatTime(minute + increment)}`);
                     button.addEventListener("pointerdown", (event) => {
-                        if (submitted) return;
+                        if (locked) return;
                         event.preventDefault();
                         dragging = true;
                         dragValue = !selected.has(slotKey(day, minute));
                         paintCell(button, dragValue);
                     });
                     button.addEventListener("click", (event) => {
-                        if (event.detail === 0 && !submitted) {
+                        if (event.detail === 0 && !locked) {
                             paintCell(button, !selected.has(slotKey(day, minute)));
                         }
                     });
@@ -402,7 +493,7 @@
             }
 
             tableBody.addEventListener("pointerover", (event) => {
-                if (!dragging || submitted) return;
+                if (!dragging || locked) return;
                 const cell = event.target.closest(".slot-button");
                 if (cell) paintCell(cell, dragValue);
             });
@@ -411,6 +502,7 @@
 
             form.addEventListener("submit", async (event) => {
                 event.preventDefault();
+                if (locked) return;
                 if (selected.size === 0) {
                     status.dataset.kind = "error";
                     status.textContent = "Select at least one available time before submitting.";
@@ -445,17 +537,35 @@
                     }
                     if (!response.ok) throw new Error(result.error || "The schedule could not be submitted.");
 
-                    submitted = true;
-                    tableBody.querySelectorAll(".slot-button").forEach((cell) => { cell.disabled = true; });
+                    updateReviewState(result.status, "");
                     status.dataset.kind = "success";
                     status.textContent = result.message;
-                    submitButton.textContent = "Submitted";
                 } catch (error) {
                     status.dataset.kind = "error";
                     status.textContent = error.message;
                     submitButton.disabled = false;
                 }
             });
+
+            updateReviewState(reviewState, "{{.DenialReason}}");
+            updateTotal();
+
+            window.setInterval(async () => {
+                if (reviewState !== "pending") return;
+                try {
+                    const response = await fetch("/student-status", { cache: "no-store" });
+                    if (!response.ok) throw new Error(`Status check failed (HTTP ${response.status}).`);
+                    const result = await response.json();
+                    if (result.status !== reviewState) {
+                        updateReviewState(result.status, result.denialReason || "");
+                    } else if (result.status === "denied") {
+                        updateReviewState(result.status, result.denialReason || "");
+                    }
+                } catch (error) {
+                    status.dataset.kind = "error";
+                    status.textContent = `Could not refresh approval status: ${error.message}`;
+                }
+            }, 5000);
         })();
     </script>
 </body>

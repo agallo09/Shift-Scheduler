@@ -69,13 +69,33 @@
             font-size: 1.3rem;
         }
 
-        .pending {
+        .status {
             color: #92400e;
             background: #fef3c7;
             border-radius: 999px;
             padding: 6px 10px;
             font-size: 0.8rem;
             font-weight: bold;
+        }
+
+        .status-approved {
+            color: #166534;
+            background: #dcfce7;
+        }
+
+        .status-denied {
+            color: #991b1b;
+            background: #fee2e2;
+        }
+
+        .employment-type {
+            color: #075985;
+            background: #e0f2fe;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: capitalize;
         }
 
         .meta {
@@ -96,17 +116,39 @@
             line-height: 1.6;
         }
 
+        .empty-state {
+            padding: 24px;
+            background: #fff;
+            border: 1px solid #dfe6ee;
+            border-radius: 10px;
+            color: #64748b;
+        }
+
+        .review-form {
+            display: grid;
+            gap: 12px;
+        }
+
+        .review-reason {
+            width: 100%;
+            min-height: 64px;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            resize: vertical;
+            font: inherit;
+        }
+
         .action-row {
             display: flex;
-            align-items: center;
-            gap: 12px;
             flex-wrap: wrap;
+            gap: 10px;
         }
 
         .btn {
-            border: none;
-            border-radius: 6px;
             padding: 10px 16px;
+            border: 0;
+            border-radius: 6px;
             font-size: 0.95rem;
             font-weight: bold;
             cursor: pointer;
@@ -114,28 +156,21 @@
 
         .approve {
             background: #16a34a;
-            color: white;
+            color: #fff;
         }
 
         .deny {
             background: #dc2626;
-            color: white;
+            color: #fff;
         }
 
-        .secondary {
-            background: #e2e8f0;
-            color: #0f172a;
-        }
-
-        textarea {
-            width: 100%;
-            min-height: 70px;
-            margin-top: 12px;
-            padding: 10px 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            resize: vertical;
-            font: inherit;
+        .denial-reason {
+            margin: 0;
+            padding: 12px 14px;
+            border-left: 4px solid #dc2626;
+            background: #fef2f2;
+            color: #7f1d1d;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -143,35 +178,48 @@
     <main class="page">
         <div class="header">
             <h1>Shift Approval</h1>
-            <span class="status-pill">3 pending reviews</span>
+            <span class="status-pill">{{.PendingCount}} pending reviews</span>
         </div>
 
         <section class="request-list">
+            {{if .Submissions}}
+            {{range .Submissions}}
             <article class="request-card">
                 <div class="request-top">
-                    <h2 class="student-name">Alex Morgan</h2>
-                    <span class="pending">Pending</span>
+                    <h2 class="student-name">{{.StudentName}}</h2>
+                    <span class="status status-{{.Status}}">{{.Status}}</span>
                 </div>
 
                 <div class="meta">
-                    <span>Submitted: May 15, 2026</span>
-                    <span>Requested hours: 18</span>
-                    <span>Availability: 2 days</span>
+                    <span>Submitted: {{.SubmittedAt}}</span>
+                    <span>Requested hours: {{.TotalHours}}</span>
+                    <span>Availability: {{.DayCount}} days</span>
+                    <span class="employment-type">{{.EmploymentType}}</span>
                 </div>
 
                 <div class="schedule-summary">
-                    Monday: 8:00 AM - 12:00 PM<br>
-                    Wednesday: 1:00 PM - 5:00 PM
+                    {{range .Days}}
+                    <strong>{{.Name}}:</strong>
+                    {{range $index, $range := .Ranges}}{{if $index}}, {{end}}{{$range}}{{end}}<br>
+                    {{end}}
                 </div>
-
-                <div class="action-row">
-                    <button class="btn approve" type="button">Approve</button>
-                    <button class="btn deny" type="button">Deny</button>
-                    <button class="btn secondary" type="button">View full schedule</button>
-                </div>
-
-                <textarea placeholder="Add a note for the student if denied..."></textarea>
+                {{if eq .Status "pending"}}
+                <form class="review-form" action="/review-schedule" method="post">
+                    <input type="hidden" name="student" value="{{.StudentName}}">
+                    <textarea class="review-reason" name="reason" maxlength="500" required placeholder="Reason for denial (required when denying)"></textarea>
+                    <div class="action-row">
+                        <button class="btn approve" type="submit" name="decision" value="approved" formnovalidate>Approve</button>
+                        <button class="btn deny" type="submit" name="decision" value="denied">Deny</button>
+                    </div>
+                </form>
+                {{else if eq .Status "denied"}}
+                <p class="denial-reason"><strong>Reason for denial:</strong> {{.DenialReason}}</p>
+                {{end}}
             </article>
+            {{end}}
+            {{else}}
+            <p class="empty-state">No schedules have been submitted yet.</p>
+            {{end}}
         </section>
     </main>
 </body>
