@@ -2,6 +2,6 @@
 Horizontal implementation for the project
 1. Will start by implementing the login page: user will have the option to choose between admin or student and it will be stored in the cookies to prevent unrestricted access to pages
 2. The buttons will redirect to corresponding pages
-3. Starting with the Student Scheduler, the view will have a Schedule view with some feedback(not submitted, pending approval, approved, denied). In case the schedule has not been submitted yet it will have an edit option which will display a popup and let the user choose with 10 minute slots. It will also have a button to submit when the time is appropiate and has been verified.
+3. The Student Scheduler shows weekdays as rows and time as columns in 10-minute increments. Students can click or drag across the grid to select or clear availability, choose part-time (3–20 hours/week) or full-time (20–40 hours/week), review the selected-hour total, and submit it. The Go server validates the employment type, weekly limits, 3-hour minimum contiguous availability blocks, and 9-hour daily maximum before marking the submission eligible. Validated submissions are held in memory while the server is running; persistent storage and approval-status feedback will be added with the database and approval workflow.
 4. The admin side, it will display a container with the student schedule and the option to approve or deny. If deny, it will show a popup and also a comment option.
 5. Student side, in case the scheudle was denied, the student will have the option to resubmit a new schedule.

@@ -101,116 +101,362 @@
             color: #64748b;
             font-size: 13px;
         }
+
+        .schedule-container {
+            max-height: 70vh;
+            overflow: auto;
+        }
+
+        #schedule {
+            width: max-content;
+            min-width: 0;
+            table-layout: auto;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        #schedule th,
+        #schedule td {
+            height: 36px;
+            padding: 0;
+            text-align: center;
+        }
+
+        #schedule thead th {
+            position: sticky;
+            z-index: 2;
+            background: #f8fafc;
+            color: #475569;
+            font-size: 12px;
+        }
+
+        #schedule .day-heading,
+        #schedule .day-name {
+            position: sticky;
+            left: 0;
+            z-index: 3;
+            width: 100px;
+            min-width: 100px;
+            padding: 0 10px;
+            background: #f8fafc;
+            text-align: left;
+        }
+
+        #schedule .day-heading {
+            top: 0;
+        }
+
+        #schedule .hour-heading {
+            top: 0;
+            height: 36px;
+            border-bottom: 0;
+        }
+
+        #schedule .minute-heading {
+            top: 36px;
+            height: 30px;
+            width: 29px;
+            min-width: 29px;
+            font-size: 10px;
+        }
+
+        #schedule .day-name {
+            background: #fff;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        #schedule td.slot-cell {
+            width: 29px;
+            min-width: 29px;
+            height: 42px;
+            padding: 0;
+            background: #fff;
+        }
+
+        #schedule .slot-button {
+            display: block;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            border: 0;
+            background: #fff;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        #schedule .slot-button:hover:not(:disabled) {
+            background: #dbeafe;
+        }
+
+        #schedule .slot-button[aria-pressed="true"] {
+            background: #60a5fa;
+        }
+
+        #schedule .slot-button:disabled {
+            cursor: not-allowed;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 18px;
+        }
+
+        .employment-type {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            margin: 20px 0 0;
+            padding: 14px;
+            border: 1px solid #dbe2ea;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .employment-type legend {
+            padding: 0 6px;
+            font-weight: bold;
+        }
+
+        .employment-type label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .submit {
+            padding: 11px 18px;
+            border: 0;
+            border-radius: 6px;
+            background: #2563eb;
+            color: #fff;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .submit:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        #status {
+            min-height: 1.4em;
+            margin: 0;
+            color: #475569;
+        }
+
+        #status[data-kind="success"] {
+            color: #166534;
+        }
+
+        #status[data-kind="error"] {
+            color: #b91c1c;
+        }
     </style>
 </head>
 <body>
     <main>
         <h1>Weekly Schedule</h1>
         <p class="subtitle">Choose your available shifts from Monday through Friday.</p>
+        <p class="subtitle">Click and drag to select or clear 10-minute periods. Each continuous availability block must be at least 3 hours, with no more than 9 hours per day.</p>
 
+        <form id="schedule-form">
+        <fieldset class="employment-type">
+            <legend>Which type of work are you seeking?</legend>
+            <label>
+                <input type="radio" name="employmentType" value="part-time" required>
+                Part-time (3–20 hours per week)
+            </label>
+            <label>
+                <input type="radio" name="employmentType" value="full-time" required>
+                Full-time (20–40 hours per week)
+            </label>
+        </fieldset>
         <div class="schedule-container">
-            <table aria-label="Weekly schedule from 8 AM to 6 PM">
-                <thead>
-                    <tr>
-                        <th>Time</th>
-                        <th>Monday</th>
-                        <th>Tuesday</th>
-                        <th>Wednesday</th>
-                        <th>Thursday</th>
-                        <th>Friday</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="time">8:00 AM</td>
-                        <td class="slot" data-day="Monday" data-start="08:00"></td>
-                        <td class="slot" data-day="Tuesday" data-start="08:00"></td>
-                        <td class="slot" data-day="Wednesday" data-start="08:00"></td>
-                        <td class="slot" data-day="Thursday" data-start="08:00"></td>
-                        <td class="slot" data-day="Friday" data-start="08:00"></td>
-                    </tr>
-                    <tr>
-                        <td class="time">9:00 AM</td>
-                        <td class="slot" data-day="Monday" data-start="09:00"></td>
-                        <td class="slot" data-day="Tuesday" data-start="09:00"></td>
-                        <td class="slot" data-day="Wednesday" data-start="09:00"></td>
-                        <td class="slot" data-day="Thursday" data-start="09:00"></td>
-                        <td class="slot" data-day="Friday" data-start="09:00"></td>
-                    </tr>
-                    <tr>
-                        <td class="time">10:00 AM</td>
-                        <td class="slot" data-day="Monday" data-start="10:00"></td>
-                        <td class="slot" data-day="Tuesday" data-start="10:00"></td>
-                        <td class="slot" data-day="Wednesday" data-start="10:00"></td>
-                        <td class="slot" data-day="Thursday" data-start="10:00"></td>
-                        <td class="slot" data-day="Friday" data-start="10:00"></td>
-                    </tr>
-                    <tr>
-                        <td class="time">11:00 AM</td>
-                        <td class="slot" data-day="Monday" data-start="11:00"></td>
-                        <td class="slot" data-day="Tuesday" data-start="11:00"></td>
-                        <td class="slot" data-day="Wednesday" data-start="11:00"></td>
-                        <td class="slot" data-day="Thursday" data-start="11:00"></td>
-                        <td class="slot" data-day="Friday" data-start="11:00"></td>
-                    </tr>
-                    <tr>
-                        <td class="time">12:00 PM</td>
-                        <td class="slot" data-day="Monday" data-start="12:00"></td>
-                        <td class="slot" data-day="Tuesday" data-start="12:00"></td>
-                        <td class="slot" data-day="Wednesday" data-start="12:00"></td>
-                        <td class="slot" data-day="Thursday" data-start="12:00"></td>
-                        <td class="slot" data-day="Friday" data-start="12:00"></td>
-                    </tr>
-                    <tr>
-                        <td class="time">1:00 PM</td>
-                        <td class="slot" data-day="Monday" data-start="13:00"></td>
-                        <td class="slot" data-day="Tuesday" data-start="13:00"></td>
-                        <td class="slot" data-day="Wednesday" data-start="13:00"></td>
-                        <td class="slot" data-day="Thursday" data-start="13:00"></td>
-                        <td class="slot" data-day="Friday" data-start="13:00"></td>
-                    </tr>
-                    <tr>
-                        <td class="time">2:00 PM</td>
-                        <td class="slot" data-day="Monday" data-start="14:00"></td>
-                        <td class="slot" data-day="Tuesday" data-start="14:00"></td>
-                        <td class="slot" data-day="Wednesday" data-start="14:00"></td>
-                        <td class="slot" data-day="Thursday" data-start="14:00"></td>
-                        <td class="slot" data-day="Friday" data-start="14:00"></td>
-                    </tr>
-                    <tr>
-                        <td class="time">3:00 PM</td>
-                        <td class="slot" data-day="Monday" data-start="15:00"></td>
-                        <td class="slot" data-day="Tuesday" data-start="15:00"></td>
-                        <td class="slot" data-day="Wednesday" data-start="15:00"></td>
-                        <td class="slot" data-day="Thursday" data-start="15:00"></td>
-                        <td class="slot" data-day="Friday" data-start="15:00"></td>
-                    </tr>
-                    <tr>
-                        <td class="time">4:00 PM</td>
-                        <td class="slot" data-day="Monday" data-start="16:00"></td>
-                        <td class="slot" data-day="Tuesday" data-start="16:00"></td>
-                        <td class="slot" data-day="Wednesday" data-start="16:00"></td>
-                        <td class="slot" data-day="Thursday" data-start="16:00"></td>
-                        <td class="slot" data-day="Friday" data-start="16:00"></td>
-                    </tr>
-                    <tr>
-                        <td class="time">5:00 PM</td>
-                        <td class="slot" data-day="Monday" data-start="17:00"></td>
-                        <td class="slot" data-day="Tuesday" data-start="17:00"></td>
-                        <td class="slot" data-day="Wednesday" data-start="17:00"></td>
-                        <td class="slot" data-day="Thursday" data-start="17:00"></td>
-                        <td class="slot" data-day="Friday" data-start="17:00"></td>
-                    </tr>
-                </tbody>
+            <table id="schedule" aria-label="Weekly schedule from 8 AM to 6 PM">
+                <thead id="schedule-head"></thead>
+                <tbody id="schedule-body"></tbody>
             </table>
         </div>
 
-        <section class="totals" aria-label="Schedule totals">
-            <div class="total-card">
-                <span>Weekly total</span>
-                <strong>0 hours</strong>
-            </div>
-        </section>
+        <p class="totals" id="weekly-total">Selected: 0 hours</p>
+        <div class="controls">
+            <button class="submit" id="submit-button" type="submit">Submit availability</button>
+            <p id="status" role="status" aria-live="polite"></p>
+        </div>
+        </form>
     </main>
+    <script>
+        (() => {
+            const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+            const startMinute = 8 * 60;
+            const endMinute = 18 * 60;
+            const increment = 10;
+            const minutes = [];
+            for (let minute = startMinute; minute < endMinute; minute += increment) {
+                minutes.push(minute);
+            } // minutes gets a bunch of numbers from 480 to 1080 in increments of 10, representing the minutes in a day from 8 AM to 6 PM
+
+            const selected = new Set();
+            const tableHead = document.getElementById("schedule-head");//getting html objects' IDs
+            const tableBody = document.getElementById("schedule-body");
+            const total = document.getElementById("weekly-total");
+            const form = document.getElementById("schedule-form");
+            const submitButton = document.getElementById("submit-button");
+            const status = document.getElementById("status");
+            let dragging = false;
+            let dragValue = false;
+            let submitted = false;
+
+            function formatTime(minute) {
+                const hour = Math.floor(minute / 60);
+                const displayHour = hour % 12 || 12;
+                const suffix = hour < 12 ? "AM" : "PM";
+                return `${displayHour}:${String(minute % 60).padStart(2, "0")} ${suffix}`;
+                }
+
+            function slotKey(day, minute) {
+                return `${day}|${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
+            }
+
+            function updateTotal() {
+                total.textContent = `Selected: ${(selected.size / 6).toFixed(1)} hours`;
+            }
+
+            function paintCell(cell, value) {
+                const key = slotKey(cell.dataset.day, Number(cell.dataset.minute));
+                if (value) selected.add(key);
+                else selected.delete(key);
+                cell.setAttribute("aria-pressed", String(value));
+                updateTotal();
+            }
+            //table head setup
+            const hourRow = document.createElement("tr");
+            const dayHeading = document.createElement("th");
+            dayHeading.className = "day-heading hour-heading";
+            dayHeading.rowSpan = 2;
+            dayHeading.scope = "col";
+            dayHeading.textContent = "Day";
+            hourRow.append(dayHeading);
+
+            for (let hour = 8; hour < 18; hour += 1) {
+                const heading = document.createElement("th");
+                heading.className = "hour-heading";
+                heading.colSpan = 6;
+                heading.scope = "colgroup";
+                heading.textContent = formatTime(hour * 60);
+                hourRow.append(heading);
+            }
+            tableHead.append(hourRow);
+
+            const minuteRow = document.createElement("tr");//second row of the table head, this is where the minutes are displayed
+            for (const minute of minutes) { // minutes has all the minutes in a day from 8 AM to 6 PM, so this is creating a column for each 10-minute increment
+                const heading = document.createElement("th");// this is creating a column for each 10-minute increment
+                heading.className = "minute-heading";
+                heading.scope = "col";
+                heading.textContent = `:${String(minute % 60).padStart(2, "0")}`;
+                heading.setAttribute("aria-label", formatTime(minute));
+                minuteRow.append(heading); // this is adding the column to the row
+            }
+            tableHead.append(minuteRow); // this is adding the new 10-minute row to the table head
+            //table head setup complete
+            for (const day of days) {
+                const row = document.createElement("tr");
+                const name = document.createElement("th");
+                name.className = "day-name";
+                name.scope = "row";
+                name.textContent = day;
+                row.append(name);
+
+                for (const minute of minutes) {
+                    const cell = document.createElement("td");
+                    cell.className = "slot-cell";
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "slot-button";
+                    button.dataset.day = day;
+                    button.dataset.minute = String(minute);
+                    button.setAttribute("aria-pressed", "false");
+                    button.setAttribute("aria-label", `${day}, ${formatTime(minute)} to ${formatTime(minute + increment)}`);
+                    button.addEventListener("pointerdown", (event) => {
+                        if (submitted) return;
+                        event.preventDefault();
+                        dragging = true;
+                        dragValue = !selected.has(slotKey(day, minute));
+                        paintCell(button, dragValue);
+                    });
+                    button.addEventListener("click", (event) => {
+                        if (event.detail === 0 && !submitted) {
+                            paintCell(button, !selected.has(slotKey(day, minute)));
+                        }
+                    });
+                    cell.append(button);
+                    row.append(cell);
+                }
+                tableBody.append(row);
+            }
+
+            tableBody.addEventListener("pointerover", (event) => {
+                if (!dragging || submitted) return;
+                const cell = event.target.closest(".slot-button");
+                if (cell) paintCell(cell, dragValue);
+            });
+            window.addEventListener("pointerup", () => { dragging = false; });
+            window.addEventListener("pointercancel", () => { dragging = false; });
+
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                if (selected.size === 0) {
+                    status.dataset.kind = "error";
+                    status.textContent = "Select at least one available time before submitting.";
+                    return;
+                }
+
+                const availability = Object.fromEntries(days.map((day) => [day, []]));
+                for (const key of selected) {
+                    const separator = key.indexOf("|");
+                    availability[key.slice(0, separator)].push(key.slice(separator + 1));
+                }
+                for (const day of days) availability[day].sort();
+
+                submitButton.disabled = true;
+                status.removeAttribute("data-kind");
+                status.textContent = "Submitting availability…";
+                try {
+                    const response = await fetch("/submit-schedule", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            employmentType: form.elements.employmentType.value,
+                            availability
+                        })
+                    });
+                    const responseText = await response.text();
+                    let result;
+                    try {
+                        result = JSON.parse(responseText);
+                    } catch {
+                        throw new Error(`The server returned an unexpected response (HTTP ${response.status}). Restart the scheduler server and try again.`);
+                    }
+                    if (!response.ok) throw new Error(result.error || "The schedule could not be submitted.");
+
+                    submitted = true;
+                    tableBody.querySelectorAll(".slot-button").forEach((cell) => { cell.disabled = true; });
+                    status.dataset.kind = "success";
+                    status.textContent = result.message;
+                    submitButton.textContent = "Submitted";
+                } catch (error) {
+                    status.dataset.kind = "error";
+                    status.textContent = error.message;
+                    submitButton.disabled = false;
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

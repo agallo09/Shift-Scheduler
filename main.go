@@ -36,6 +36,7 @@ func main() {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
+	http.HandleFunc("/submit-schedule", handleScheduleSubmission)
 	//admin button
 	tmpl2 := template.Must(template.ParseFiles("templates/approval.html"))
 	http.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
