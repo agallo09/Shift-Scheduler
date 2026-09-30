@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"sort"
@@ -61,6 +62,19 @@ var (
 
 var scheduleDays = []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"}
 
+var submissionMessageTemplate = template.Must(template.New("submission-message").Parse(
+	`<span data-kind="{{.Kind}}">{{.Message}}</span>`,
+))
+
+var studentStatusTemplate = template.Must(template.New("student-status").Parse(
+	`<section class="review-status" id="review-status" data-status="{{.Status}}" aria-live="polite" hx-get="/student-status" hx-trigger="every 5s [this.dataset.status === 'pending']" hx-swap="outerHTML">
+    <strong>Schedule status:</strong>
+    <span id="review-status-badge" class="review-status-badge {{.Status}}">{{.Label}}</span>
+    {{if eq .Status "denied"}}<p id="denial-reason" class="denial-reason"><strong>Reason for denial:</strong> {{.DenialReason}}</p>
+    <span id="resubmit-hint">Edit your availability and submit it again for review.</span>{{end}}
+</section>`,
+))
+
 func handleScheduleSubmission(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeScheduleError(w, http.StatusMethodNotAllowed, "Use POST to submit availability.")
@@ -73,20 +87,13 @@ func handleScheduleSubmission(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	var submission scheduleSubmission
-	if err := decoder.Decode(&submission); err != nil {
-		writeScheduleError(w, http.StatusBadRequest, "Invalid availability request.")
-		return
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		writeScheduleError(w, http.StatusBadRequest, "Request must contain a single JSON object.")
+	submission, err := decodeScheduleSubmission(w, r)
+	if err != nil {
+		writeSubmissionError(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err := validateScheduleSubmission(submission); err != nil {
-		writeScheduleError(w, http.StatusBadRequest, err.Error())
+		writeSubmissionError(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -97,12 +104,24 @@ func handleScheduleSubmission(w http.ResponseWriter, r *http.Request) {
 	scheduleMu.Lock()
 	if previous, exists := schedules[cookie.Value]; exists && previous.Status != "denied" {
 		scheduleMu.Unlock()
-		writeScheduleError(w, http.StatusConflict, "A schedule is already awaiting review or has been approved.")
+		writeSubmissionError(w, r, http.StatusConflict, "A schedule is already awaiting review or has been approved.")
 		return
 	}
 	submission.Status = "pending"
 	schedules[cookie.Value] = submission
 	scheduleMu.Unlock()
+
+	if isHTMXRequest(r) {
+		w.Header().Set("HX-Trigger-After-Swap", "scheduleSubmitted")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := submissionMessageTemplate.Execute(w, struct {
+			Kind    string
+			Message string
+		}{Kind: "success", Message: "Schedule submitted and pending approval."}); err != nil {
+			http.Error(w, "Could not render submission response.", http.StatusInternalServerError)
+		}
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -114,6 +133,32 @@ func handleScheduleSubmission(w http.ResponseWriter, r *http.Request) {
 	}); err != nil {
 		http.Error(w, "Could not write submission response.", http.StatusInternalServerError)
 	}
+}
+
+func decodeScheduleSubmission(w http.ResponseWriter, r *http.Request) (scheduleSubmission, error) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
+		if err := r.ParseForm(); err != nil {
+			return scheduleSubmission{}, fmt.Errorf("Invalid availability request.")
+		}
+		var submission scheduleSubmission
+		submission.EmploymentType = r.FormValue("employmentType")
+		if err := json.Unmarshal([]byte(r.FormValue("availability")), &submission.Availability); err != nil {
+			return scheduleSubmission{}, fmt.Errorf("Invalid availability request.")
+		}
+		return submission, nil
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	var submission scheduleSubmission
+	if err := decoder.Decode(&submission); err != nil {
+		return scheduleSubmission{}, fmt.Errorf("Invalid availability request.")
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return scheduleSubmission{}, fmt.Errorf("Request must contain a single JSON object.")
+	}
+	return submission, nil
 }
 
 func handleReviewSchedule(w http.ResponseWriter, r *http.Request) {
@@ -193,11 +238,62 @@ func handleStudentStatus(w http.ResponseWriter, r *http.Request) {
 		reason = submission.DenialReason
 	}
 
+	if isHTMXRequest(r) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		if err := studentStatusTemplate.Execute(w, struct {
+			Status       string
+			Label        string
+			DenialReason string
+		}{
+			Status:       status,
+			Label:        studentStatusLabel(status),
+			DenialReason: reason,
+		}); err != nil {
+			http.Error(w, "Could not render schedule status.", http.StatusInternalServerError)
+		}
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	if err := json.NewEncoder(w).Encode(map[string]string{"status": status, "denialReason": reason}); err != nil {
 		http.Error(w, "Could not write schedule status.", http.StatusInternalServerError)
 	}
+}
+
+func isHTMXRequest(r *http.Request) bool {
+	return r.Header.Get("HX-Request") == "true"
+}
+
+func studentStatusLabel(status string) string {
+	switch status {
+	case "pending":
+		return "Pending approval"
+	case "approved":
+		return "Approved"
+	case "denied":
+		return "Denied"
+	default:
+		return "Not submitted"
+	}
+}
+
+func writeSubmissionError(w http.ResponseWriter, r *http.Request, status int, message string) {
+	if isHTMXRequest(r) {
+		w.Header().Set("HX-Retarget", "#status")
+		w.Header().Set("HX-Reswap", "innerHTML")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(status)
+		if err := submissionMessageTemplate.Execute(w, struct {
+			Kind    string
+			Message string
+		}{Kind: "error", Message: message}); err != nil {
+			http.Error(w, "Could not render submission error.", http.StatusInternalServerError)
+		}
+		return
+	}
+	writeScheduleError(w, status, message)
 }
 
 func currentStudentPageData(student string) (studentPageData, error) {

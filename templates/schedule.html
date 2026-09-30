@@ -166,6 +166,26 @@
             font-weight: bold;
         }
 
+        #schedule .day-total-heading,
+        #schedule .day-total {
+            position: sticky;
+            right: 0;
+            z-index: 2;
+            width: 84px;
+            min-width: 84px;
+            padding: 0 8px;
+            background: #f8fafc;
+            color: #475569;
+            font-size: 12px;
+            text-align: right;
+        }
+
+        #schedule .day-total {
+            background: #fff;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
         #schedule td.slot-cell {
             width: 29px;
             min-width: 29px;
@@ -250,12 +270,22 @@
             color: #475569;
         }
 
-        #status[data-kind="success"] {
+        #status [data-kind="success"] {
             color: #166534;
         }
 
+        #status [data-kind="error"],
         #status[data-kind="error"] {
             color: #b91c1c;
+        }
+
+        .htmx-indicator {
+            display: none;
+            color: #64748b;
+        }
+
+        .htmx-request .htmx-indicator {
+            display: inline;
         }
 
         .review-status {
@@ -300,9 +330,6 @@
             color: #991b1b;
         }
 
-        .saved-slots {
-            display: none;
-        }
     </style>
 </head>
 <body>
@@ -311,15 +338,15 @@
         <p class="subtitle">Choose your available shifts from Monday through Friday.</p>
         <p class="subtitle">Click and drag to select or clear 10-minute periods. Each continuous availability block must be at least 3 hours, with no more than 9 hours per day.</p>
 
-        <section class="review-status" aria-live="polite">
+        <section class="review-status" id="review-status" data-status="{{.ReviewStatus}}" aria-live="polite" hx-get="/student-status" hx-trigger="every 5s [this.dataset.status === 'pending']" hx-swap="outerHTML">
             <strong>Schedule status:</strong>
-            <span id="review-status-badge" class="review-status-badge">{{.ReviewStatus}}</span>
-            <p id="denial-reason" class="denial-reason" {{if ne .ReviewStatus "denied"}}hidden{{end}}>{{.DenialReason}}</p>
-            <span id="resubmit-hint" {{if ne .ReviewStatus "denied"}}hidden{{end}}>Edit your availability and submit it again for review.</span>
+            <span id="review-status-badge" class="review-status-badge {{.ReviewStatus}}">{{if eq .ReviewStatus "pending"}}Pending approval{{else if eq .ReviewStatus "approved"}}Approved{{else if eq .ReviewStatus "denied"}}Denied{{else}}Not submitted{{end}}</span>
+            {{if eq .ReviewStatus "denied"}}<p id="denial-reason" class="denial-reason"><strong>Reason for denial:</strong> {{.DenialReason}}</p>
+            <span id="resubmit-hint">Edit your availability and submit it again for review.</span>{{end}}
         </section>
 
-        <form id="schedule-form" data-review-status="{{.ReviewStatus}}" data-has-submission="{{.HasSubmission}}">
-        <div class="saved-slots" aria-hidden="true">
+        <form id="schedule-form" data-review-status="{{.ReviewStatus}}">
+        <div class="saved-slots" hidden aria-hidden="true">
             {{range .SelectedSlots}}<span class="saved-slot" data-day="{{.Day}}" data-minute="{{.Minute}}"></span>{{end}}
         </div>
         <fieldset class="employment-type">
@@ -342,11 +369,12 @@
 
         <p class="totals" id="weekly-total">Selected: 0 hours</p>
         <div class="controls">
-            <button class="submit" id="submit-button" type="submit">Submit availability</button>
-            <p id="status" role="status" aria-live="polite"></p>
+            <button class="submit" id="submit-button" type="submit">Submit schedule</button>
+            <div id="status" role="status" aria-live="polite"></div>
         </div>
         </form>
     </main>
+    <script src="/static/htmx.min.js"></script>
     <script>
         (() => {
             const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -365,9 +393,6 @@
             const form = document.getElementById("schedule-form");
             const submitButton = document.getElementById("submit-button");
             const status = document.getElementById("status");
-            const reviewBadge = document.getElementById("review-status-badge");
-            const denialReason = document.getElementById("denial-reason");
-            const resubmitHint = document.getElementById("resubmit-hint");
             const employmentTypeInputs = form.querySelectorAll('input[name="employmentType"]');
             let dragging = false;
             let dragValue = false;
@@ -390,11 +415,35 @@
                 };
                 reviewState = labels[nextState] ? nextState : "not-submitted";
                 locked = reviewState === "pending" || reviewState === "approved";
+                const reviewBadge = document.getElementById("review-status-badge");
+                const denialReason = document.getElementById("denial-reason");
+                const resubmitHint = document.getElementById("resubmit-hint");
+                const reviewSection = document.getElementById("review-status");
+                reviewSection.dataset.status = reviewState;
                 reviewBadge.textContent = labels[reviewState];
                 reviewBadge.className = `review-status-badge ${reviewState}`;
-                denialReason.textContent = reason;
-                denialReason.hidden = reviewState !== "denied";
-                resubmitHint.hidden = reviewState !== "denied";
+                if (reviewState === "denied") {
+                    if (!denialReason) {
+                        const reasonElement = document.createElement("p");
+                        reasonElement.id = "denial-reason";
+                        reasonElement.className = "denial-reason";
+                        reviewSection.append(reasonElement);
+                    }
+                    const currentReason = document.getElementById("denial-reason");
+                    currentReason.replaceChildren();
+                    const label = document.createElement("strong");
+                    label.textContent = "Reason for denial: ";
+                    currentReason.append(label, reason);
+                    if (!resubmitHint) {
+                        const hint = document.createElement("span");
+                        hint.id = "resubmit-hint";
+                        hint.textContent = "Edit your availability and submit it again for review.";
+                        reviewSection.append(hint);
+                    }
+                } else {
+                    denialReason?.remove();
+                    resubmitHint?.remove();
+                }
                 tableBody.querySelectorAll(".slot-button").forEach((cell) => { cell.disabled = locked; });
                 employmentTypeInputs.forEach((input) => { input.disabled = locked; });
                 submitButton.disabled = locked;
@@ -415,7 +464,12 @@
             }
 
             function updateTotal() {
-                total.textContent = `Selected: ${(selected.size / 6).toFixed(1)} hours`;
+                for (const day of days) {
+                    const daySlots = [...selected].filter((key) => key.startsWith(`${day}|`)).length;
+                    const dailyTotal = tableBody.querySelector(`[data-day-total="${day}"]`);
+                    dailyTotal.textContent = `${(daySlots / 6).toFixed(1)} h`;
+                }
+                total.textContent = `Weekly total: ${(selected.size / 6).toFixed(1)} hours`;
             }
 
             function paintCell(cell, value) {
@@ -442,6 +496,12 @@
                 heading.textContent = formatTime(hour * 60);
                 hourRow.append(heading);
             }
+            const dailyHeading = document.createElement("th");
+            dailyHeading.className = "day-total-heading hour-heading";
+            dailyHeading.rowSpan = 2;
+            dailyHeading.scope = "col";
+            dailyHeading.textContent = "Daily total";
+            hourRow.append(dailyHeading);
             tableHead.append(hourRow);
 
             const minuteRow = document.createElement("tr");//second row of the table head, this is where the minutes are displayed
@@ -489,6 +549,11 @@
                     cell.append(button);
                     row.append(cell);
                 }
+                const dailyTotalCell = document.createElement("td");
+                dailyTotalCell.className = "day-total";
+                dailyTotalCell.dataset.dayTotal = day;
+                dailyTotalCell.textContent = "0.0 h";
+                row.append(dailyTotalCell);
                 tableBody.append(row);
             }
 
@@ -502,7 +567,9 @@
 
             form.addEventListener("submit", async (event) => {
                 event.preventDefault();
-                if (locked) return;
+                if (locked) {
+                    return;
+                }
                 if (selected.size === 0) {
                     status.dataset.kind = "error";
                     status.textContent = "Select at least one available time before submitting.";
@@ -518,7 +585,7 @@
 
                 submitButton.disabled = true;
                 status.removeAttribute("data-kind");
-                status.textContent = "Submitting availability…";
+                status.textContent = "Submitting…";
                 try {
                     const response = await fetch("/submit-schedule", {
                         method: "POST",
@@ -533,10 +600,11 @@
                     try {
                         result = JSON.parse(responseText);
                     } catch {
-                        throw new Error(`The server returned an unexpected response (HTTP ${response.status}). Restart the scheduler server and try again.`);
+                        throw new Error(`The server returned an unexpected response (HTTP ${response.status}).`);
                     }
-                    if (!response.ok) throw new Error(result.error || "The schedule could not be submitted.");
-
+                    if (!response.ok) {
+                        throw new Error(result.error || "The schedule could not be submitted.");
+                    }
                     updateReviewState(result.status, "");
                     status.dataset.kind = "success";
                     status.textContent = result.message;
@@ -550,22 +618,13 @@
             updateReviewState(reviewState, "{{.DenialReason}}");
             updateTotal();
 
-            window.setInterval(async () => {
-                if (reviewState !== "pending") return;
-                try {
-                    const response = await fetch("/student-status", { cache: "no-store" });
-                    if (!response.ok) throw new Error(`Status check failed (HTTP ${response.status}).`);
-                    const result = await response.json();
-                    if (result.status !== reviewState) {
-                        updateReviewState(result.status, result.denialReason || "");
-                    } else if (result.status === "denied") {
-                        updateReviewState(result.status, result.denialReason || "");
-                    }
-                } catch (error) {
-                    status.dataset.kind = "error";
-                    status.textContent = `Could not refresh approval status: ${error.message}`;
+            document.body.addEventListener("htmx:afterSwap", (event) => {
+                if (event.detail.target.id === "review-status") {
+                    const currentReview = document.getElementById("review-status");
+                    const reason = currentReview.querySelector("#denial-reason")?.textContent.replace("Reason for denial:", "").trim() || "";
+                    updateReviewState(currentReview.dataset.status, reason);
                 }
-            }, 5000);
+            });
         })();
     </script>
 </body>

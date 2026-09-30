@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -76,10 +77,89 @@ func TestStudentSchedulePageRendersSavedDeniedSchedule(t *testing.T) {
 		`data-day="Monday" data-minute="480"`,
 		"Please add another day.",
 		`input.checked = input.value === "part-time"`,
+		"dailyTotalCell.dataset.dayTotal = day",
+		`fetch("/submit-schedule"`,
+		`"Content-Type": "application/json"`,
+		`hx-get="/student-status"`,
 	} {
 		if !strings.Contains(body, expected) {
 			t.Errorf("student page does not contain %q", expected)
 		}
+	}
+}
+
+func TestHandleScheduleSubmissionAcceptsHTMXForm(t *testing.T) {
+	scheduleMu.Lock()
+	previous, existed := schedules["student1"]
+	delete(schedules, "student1")
+	scheduleMu.Unlock()
+	t.Cleanup(func() {
+		scheduleMu.Lock()
+		if existed {
+			schedules["student1"] = previous
+		} else {
+			delete(schedules, "student1")
+		}
+		scheduleMu.Unlock()
+	})
+
+	availability, err := json.Marshal(map[string][]string{"Monday": slotRange(8*60, 18)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/submit-schedule", strings.NewReader(
+		"employmentType=part-time&availability="+url.QueryEscape(string(availability)),
+	))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("HX-Request", "true")
+	request.AddCookie(&http.Cookie{Name: "username", Value: "student1"})
+	response := httptest.NewRecorder()
+
+	handleScheduleSubmission(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusOK, response.Body.String())
+	}
+	if response.Header().Get("HX-Trigger-After-Swap") != "scheduleSubmitted" {
+		t.Fatalf("HX-Trigger-After-Swap = %q, want scheduleSubmitted", response.Header().Get("HX-Trigger-After-Swap"))
+	}
+	if !strings.Contains(response.Body.String(), "pending approval") {
+		t.Fatalf("response = %q, want pending approval message", response.Body.String())
+	}
+}
+
+func TestHandleStudentStatusReturnsHTMXFragment(t *testing.T) {
+	scheduleMu.Lock()
+	previous, existed := schedules["student1"]
+	schedules["student1"] = scheduleSubmission{
+		Status:       "denied",
+		DenialReason: "Please adjust the times.",
+	}
+	scheduleMu.Unlock()
+	t.Cleanup(func() {
+		scheduleMu.Lock()
+		if existed {
+			schedules["student1"] = previous
+		} else {
+			delete(schedules, "student1")
+		}
+		scheduleMu.Unlock()
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/student-status", nil)
+	request.Header.Set("HX-Request", "true")
+	request.AddCookie(&http.Cookie{Name: "username", Value: "student1"})
+	response := httptest.NewRecorder()
+	handleStudentStatus(response, request)
+
+	body := response.Body.String()
+	for _, expected := range []string{"id=\"review-status\"", "Denied", "Please adjust the times."} {
+		if !strings.Contains(body, expected) {
+			t.Errorf("status fragment does not contain %q", expected)
+		}
+	}
+	if strings.Contains(body, "Please adjust the times.") && !strings.Contains(body, "Reason for denial:") {
+		t.Error("denial reason is rendered without its denial-only label")
 	}
 }
 

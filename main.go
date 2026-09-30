@@ -15,6 +15,7 @@ var users = map[string]string{
 func main() {
 	//initial login
 	log.Println("Starting server at port 8080")
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	//home page load login.html
 	tmpl := template.Must(template.ParseFiles("templates/login.html"))
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
